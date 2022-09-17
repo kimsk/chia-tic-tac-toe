@@ -1,0 +1,30 @@
+; GAME_PUZZLE_HASH  : Tic Tac Toe Game Puzzle Hash
+; OWNER_PUZZLE_HASH : Owner Clawback Puzzle Hash
+; PK                : Owner PK
+; action            : -1 clawback, 0 spend, 1 create_game
+
+(mod (GAME_PUZZLE_HASH OWNER_PUZZLE_HASH PK action)
+    (include condition_codes.clib)
+
+    (defconstant CLAWBACK -1)
+    (defconstant SPEND 0)
+    (defconstant CREATE-GAME 1)
+
+    ; if clawback
+    (if (= CLAWBACK action)
+        (list 
+            (list ASSERT_SECONDS_RELATIVE 86400) ; clawback condition valid after 24 hrs, 86400 seconds
+            (list CREATE_COIN OWNER_PUZZLE_HASH 1_000_000_000_000) ; return back 1 XCH, 1_000_000_000_000 mojos
+            (list AGG_SIG_ME PK "return to sender")
+        )
+        (if (= CREATE-GAME action)
+            (list
+                (list CREATE_COIN GAME_PUZZLE_HASH 1_999_999_999_999)
+                (list CREATE_PUZZLE_ANNOUNCEMENT GAME_PUZZLE_HASH)
+            )
+            (list
+                (list ASSERT_PUZZLE_ANNOUNCEMENT GAME_PUZZLE_HASH)
+            )
+        )
+    ) 
+)
