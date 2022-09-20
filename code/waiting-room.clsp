@@ -1,9 +1,9 @@
-; GAME_PUZZLE_HASH  : Tic Tac Toe Game Puzzle Hash
-; OWNER_PUZZLE_HASH : Owner Clawback Puzzle Hash
-; PK                : Owner PK
-; action            : -1 clawback, 0 spend, 1 create_game
+; OWNER_PUZZLE_HASH             : Owner Clawback Puzzle Hash
+; PK                            : Owner PK
+; launcher_coin_announcement    : annoucement to be created by launcher coin 
+; action                        : clawback, spend (burn), create-game
 
-(mod (GAME_PUZZLE_HASH OWNER_PUZZLE_HASH PK action)
+(mod (OWNER_PUZZLE_HASH PK launcher_coin_announcement action)
     (include condition_codes.clib)
 
     (defconstant CLAWBACK -1)
@@ -19,11 +19,12 @@
         )
         (if (= CREATE-GAME action)
             (list
-                (list CREATE_COIN GAME_PUZZLE_HASH 1_999_999_999_999)
-                (list CREATE_PUZZLE_ANNOUNCEMENT GAME_PUZZLE_HASH)
+                (list CREATE_COIN SINGLETON_LAUNCHER_HASH 2_000_000_000_001)
+                (list ASSERT_COIN_ANNOUNCEMENT launcher_coin_announcement)   ; spend with launcher coin
+                (list CREATE_PUZZLE_ANNOUNCEMENT launcher_coin_announcement) ; spend with other waiting room coins
             )
             (list
-                (list ASSERT_PUZZLE_ANNOUNCEMENT GAME_PUZZLE_HASH)
+                (list ASSERT_PUZZLE_ANNOUNCEMENT launcher_coin_announcement) ; spend with other waiting room coins
             )
         )
     ) 

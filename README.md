@@ -9,7 +9,7 @@
 1. Alice enters and gives her PK to Bob and vice versa.
 2. Alice enters Bob's PK and vice versa.
 3. The waiting room puzzle `a` and its XCH address is generated for Alice and `b` and its XCH address is generated for Bob.
-4. Alice and Bob send 1 XCH each to her/his provided XCH addresses.
+4. Alice sends 1 XCH and 1 mojo and Bob sends 1 XCH each to their provided XCH addresses.
 
 > The waiting room puzzle for Alice allows the clawback after 24 hrs if Bob has not create his waiting room coin and vice versa.
 
