@@ -13,7 +13,7 @@
     ; if clawback
     (if (= CLAWBACK action)
         (list 
-            (list ASSERT_SECONDS_RELATIVE 86400) ; clawback condition valid after 24 hrs, 86400 seconds
+            (list ASSERT_HEIGHT_RELATIVE 100) ; clawback condition valid after 100 blocks have passed
             (list CREATE_COIN OWNER_PUZZLE_HASH 1_000_000_000_000) ; return back 1 XCH, 1_000_000_000_000 mojos
             (list AGG_SIG_ME PK "return to sender")
         )
