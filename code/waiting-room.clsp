@@ -1,31 +1,32 @@
-; OWNER_PUZZLE_HASH             : Owner Clawback Puzzle Hash
-; PK                            : Owner PK
-; launcher_coin_announcement    : annoucement to be created by launcher coin 
-; action                        : clawback, spend (burn), create-game
+; PLAYER_PH                : Player Clawback Puzzle Hash
+; PLAYER_PK                : Player PK
+; launcher_announcement    : announcement to be created by launcher coin 
+; action                   : clawback, spend (burn), create-game
 
-(mod (OWNER_PUZZLE_HASH PK launcher_coin_announcement action)
+(mod (PLAYER_PH PLAYER_PK launcher_announcement action)
     (include condition_codes.clib)
+
+    (defconstant AGG_SIG_MESSAGE "return to sender")
 
     (defconstant CLAWBACK -1)
     (defconstant SPEND 0)
-    (defconstant CREATE-GAME 1)
+    (defconstant CREATE_GAME 1)
     (defconstant SINGLETON_LAUNCHER_HASH 0xeff07522495060c066f66f32acc2a77e3a3e737aca8baea4d1a64ea4cdc13da9)
 
     ; if clawback
     (if (= CLAWBACK action)
         (list 
             (list ASSERT_HEIGHT_RELATIVE 100) ; clawback condition valid after 100 blocks have passed
-            (list CREATE_COIN OWNER_PUZZLE_HASH 1_000_000_000_000) ; return back 1 XCH, 1_000_000_000_000 mojos
-            (list AGG_SIG_ME PK "return to sender")
+            (list CREATE_COIN PLAYER_PH 1_000_000_000_000) ; return back 1 XCH, 1_000_000_000_000 mojos
+            (list AGG_SIG_ME PLAYER_PK AGG_SIG_MESSAGE)
         )
-        (if (= CREATE-GAME action)
-            (list
-                (list CREATE_COIN SINGLETON_LAUNCHER_HASH 2_000_000_000_001)
-                (list ASSERT_COIN_ANNOUNCEMENT launcher_coin_announcement)   ; spend with launcher coin
-                (list CREATE_PUZZLE_ANNOUNCEMENT launcher_coin_announcement) ; spend with other waiting room coins
-            )
-            (list
-                (list ASSERT_PUZZLE_ANNOUNCEMENT launcher_coin_announcement) ; spend with other waiting room coins
+        (c 
+            (list ASSERT_COIN_ANNOUNCEMENT launcher_announcement)   ; assert coin announcement from launcher coin
+            (if (= CREATE_GAME action)
+                (list
+                    (list CREATE_COIN SINGLETON_LAUNCHER_HASH 2_000_000_000_001)
+                ) 
+                ()
             )
         )
     ) 
