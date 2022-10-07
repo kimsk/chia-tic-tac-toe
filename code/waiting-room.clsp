@@ -2,13 +2,13 @@
 ; PLAYER_PK         : Player PK (for Clawback)
 ; P1_PK             : Player One PK
 ; P2_PK             : Player Two PK
-; launcher_solution : (singleton_full_puzzle_hash amount (p1_pk p2_pk)) To Calculate Launcher Announcement
-; action            : clawback, spend (burn), create-game
+; launcher_solution : (singleton_full_puzzle_hash amount) to calculate launcher announcement
+; action            : clawback, spend (burn), create_game
 
 (mod (
         (PLAYER_PH PLAYER_PK) 
         (P1_PK P2_PK) 
-        (singleton_full_puzzle_hash amount (_p1_pk _p2_pk)) 
+        (singleton_full_puzzle_hash amount) 
         action
     )
     (include condition_codes.clib)
@@ -19,7 +19,7 @@
     (defconstant SPEND 0)
     (defconstant CREATE_GAME 1)
     (defconstant SINGLETON_LAUNCHER_HASH 0xeff07522495060c066f66f32acc2a77e3a3e737aca8baea4d1a64ea4cdc13da9)
-    (defconstant FIRST_KV (list "game" "tic tac toe"))
+    (defconstant FIRST_KV ("game" . "tic-tac-toe"))
 
     (defun sha256tree1 (TREE)
         (if (l TREE)
@@ -36,26 +36,11 @@
                 singleton_full_puzzle_hash
                 amount 
                 (list 
-                    (list "game" "tic tac toe")
-                    (list "pks" (list P1_PK P2_PK))
+                    FIRST_KV
+                    (qq ("p1_pk" . (unquote P1_PK)))
+                    (qq ("p2_pk" . (unquote P2_PK)))
                 )
             )
-        )
-    )
-
-    (defun start-game (launcher_announcement P1_PK P2_PK _p1_pk _p2_pk)
-        (if (all (= P1_PK _p1_pk) (= P2_PK _p2_pk)) ; pks provided must match the curried pks
-            (c 
-                ; assert coin announcement from launcher coin
-                (list ASSERT_COIN_ANNOUNCEMENT launcher_announcement) 
-                (if (all (= CREATE_GAME action) (= PLAYER_PK P1_PK)) ; P1 creates a game
-                    (list
-                        (list CREATE_COIN SINGLETON_LAUNCHER_HASH 2_000_000_000_001)
-                    ) 
-                    ()
-                )
-            )
-            (x P1_PK P2_PK _p1_pk _p2_pk "invalid P1_PK P2_PK")
         )
     )
 
@@ -66,9 +51,17 @@
             (list CREATE_COIN PLAYER_PH 1_000_000_000_000) ; return back 1 XCH, 1_000_000_000_000 mojos
             (list AGG_SIG_ME PLAYER_PK AGG_SIG_MESSAGE)
         )
-        (start-game 
-            (get-launcher-announcement singleton_full_puzzle_hash amount P1_PK P2_PK) 
-            P1_PK P2_PK _p1_pk _p2_pk
+        (c 
+            ; assert coin announcement from launcher coin
+            (list ASSERT_COIN_ANNOUNCEMENT (get-launcher-announcement singleton_full_puzzle_hash amount P1_PK P2_PK)) 
+            (if (all (= CREATE_GAME action) (= PLAYER_PK P1_PK))
+                ; P1 creates a launcher coin
+                (list
+                    (list CREATE_COIN SINGLETON_LAUNCHER_HASH 2_000_000_000_001)
+                )
+                ; P2 coin is burned
+                ()
+            )
         )
     )
 )
