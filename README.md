@@ -15,12 +15,13 @@
 > The waiting room puzzle for Alice allows the clawback after 100 blocks has passed if Bob has not create his waiting room coin and vice versa.
 
 ### Phase 2 -- Singleton Tic Tac Toe (Game) Coin
-1. Once two coins with Alice's and Bob's waiting room puzzles are created, anyone can spend (absorb) and the tic tac toe singleton coin with (2 XCH - 1 mojo) is created.
+1. Once two coins with Alice's and Bob's waiting room puzzles are created, Alice can create a spend bundle, provide signatures for Alice's and Bob's spend and create the tic tac toe singleton coin with (2 XCH + 1 mojo).
 
 2. Alice's coin creates an ephermeral launcher coin that creates the game coin. Bob's coin is burned.
 
 
 #### Security
+- Alice's sign the `launcher_id` for both Alice's and Bob's spend.
 - Alice's coin asserts coin announcement from the launcher coin.
 - Bob's coin asserts coin announcement from the launcher coin.
 - Both Alice's and Bob's coins are curried in both players' PK which is also provided to the launcher coin as Key/Value.
