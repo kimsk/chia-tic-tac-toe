@@ -2,10 +2,9 @@
 ; P1_PK                         : Player One PK
 ; P2_PK                         : Player Two PK
 ; P1_COIN_ID                    : P1 coin id, null if this is P1 coin
-; RETURN_AMOUNT                 : amount returned to player when clawback in mojos
+; RETURN_AMOUNT                 : Amount returned to player when clawback in mojos
 ; GAME_AMOUNT                   : Odd game amount in mojos
-; launcher_id                   : null if Clawback
-; singleton_full_puzzle_hash    : Singleton Game Puzzle Hash created by Launcher Coin
+; launcher_coin_announcement    : Expected coin announcement from the launcher coin, null if Clawback
 
 (mod (
         PLAYER_PH
@@ -14,58 +13,30 @@
         P1_COIN_ID
         RETURN_AMOUNT
         GAME_AMOUNT
-        launcher_id
-        singleton_full_puzzle_hash
+        launcher_coin_announcement
     )
     (include condition_codes.clib)
 
     (defconstant SINGLETON_LAUNCHER_HASH 0xeff07522495060c066f66f32acc2a77e3a3e737aca8baea4d1a64ea4cdc13da9)
     (defconstant CLAWBACK_BLOCKS 100)
 
-    (defun sha256tree1 (TREE)
-        (if (l TREE)
-            (sha256 2 (sha256tree1 (f TREE)) (sha256tree1 (r TREE)))
-            (sha256 1 TREE)
-        )
-    )
 
-    ; launcher_coin_announcement:
-    ; message = (sha256tree1 (list singleton_full_puzzle_hash amount key_value_list))
-    (defun get-launcher-announcement (singleton_full_puzzle_hash game_amount P1_PK P2_PK)
-        (sha256tree1 
-            (list 
-                singleton_full_puzzle_hash
-                game_amount 
-                (list 
-                    (q "game" . "tic-tac-toe")
-                    (qq ("p1_pk" . (unquote P1_PK)))
-                    (qq ("p2_pk" . (unquote P2_PK)))
-                )
-            )
-        )
-    )
-
-    (defun start-game (P1_PK P2_PK P1_COIN_ID GAME_AMOUNT launcher_id singleton_full_puzzle_hash)
+    (defun start-game (P1_PK P2_PK P1_COIN_ID GAME_AMOUNT launcher_coin_announcement)
         (if P1_COIN_ID
             (list
-                ; P2 asserts a coin announcement
-                (list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID GAME_AMOUNT))
+                ; P2 asserts a coin announcement from P1 coin
+                ; We want to secure P2 spend without AGG_SIG_ME
+                (list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
             )
             (list
-                ; assert coin announcement from launcher coin
-                ; announcementID == sha256(coinID + message)
-                (list ASSERT_COIN_ANNOUNCEMENT 
-                    (sha256
-                        launcher_id 
-                        (get-launcher-announcement singleton_full_puzzle_hash GAME_AMOUNT P1_PK P2_PK) 
-                    )
-                )
                 ; P1 creates a launcher coin
                 (list CREATE_COIN SINGLETON_LAUNCHER_HASH GAME_AMOUNT)
+                ; P1 asserts a coin announcement from launcher coin
+                (list ASSERT_COIN_ANNOUNCEMENT launcher_coin_announcement)
                 ; P1 creates a coin annoucement for P2
-                (list CREATE_COIN_ANNOUNCEMENT GAME_AMOUNT)
-                ; P1 signs hash of launcher_id + singleton_full_puzzle_hash 
-                (list AGG_SIG_ME P1_PK (sha256 launcher_id singleton_full_puzzle_hash))
+                (list CREATE_COIN_ANNOUNCEMENT launcher_coin_announcement)
+                ; P1 signs launcher_coin_announcement
+                (list AGG_SIG_ME P1_PK launcher_coin_announcement)
             )
         )
     )
@@ -85,14 +56,13 @@
     )
 
     ; if launcher_id is not null (not clawback)
-    (if launcher_id 
+    (if launcher_coin_announcement 
         (start-game
             P1_PK
             P2_PK
             P1_COIN_ID
             GAME_AMOUNT
-            launcher_id 
-            singleton_full_puzzle_hash
+            launcher_coin_announcement 
         )
         (clawback PLAYER_PH RETURN_AMOUNT)
     )
