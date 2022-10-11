@@ -11,10 +11,9 @@
 ; P1_PK                         : Player One PK
 ; P2_PK                         : Player Two PK
 ; P1_COIN_ID                    : P1 coin id, null if this is P1 coin
-; RETURN_AMOUNT                 : amount returned to player when clawback in mojos
+; RETURN_AMOUNT                 : Amount returned to player when clawback in mojos
 ; GAME_AMOUNT                   : Odd game amount in mojos
-; launcher_id                   : null if Clawback
-; singleton_full_puzzle_hash    : Singleton Game Puzzle Hash created by Launcher Coin
+; launcher_coin_announcement    : Expected coin announcement from the launcher coin, null if Clawback
 ```
 
 1. Alice (P1) enters and gives her PK to Bob (P2) and vice versa.
@@ -36,9 +35,9 @@
 - Alice signs hash of `launcher_id` and `singleton_full_puzzle_hash`.
 - Alice's coin verifies the signature.
 ```clojure
-(list AGG_SIG_ME P1_PK (sha256 launcher_id singleton_full_puzzle_hash))
+(list AGG_SIG_ME P1_PK launcher_coin_announcement)
 ```
-- Bob's coin asserts coin announcement from the Alice's coin.
+- Bob's coin asserts (launcher) coin announcement from the Alice's coin.
 - Both Alice's and Bob's coins are curried in both players' PK which is also provided to the launcher coin as Key/Value.
 - Key/Value List for the launcher coin:
 ```clojure
@@ -51,17 +50,12 @@
 
 - When Alice's coin is spent, the launcher coin is created, spent, creating the game coin and generate the coin announcement. Alice's coin calculates coin announcement and assert it.
 ```clojure
-(list ASSERT_COIN_ANNOUNCEMENT 
-    (sha256
-        launcher_id 
-        (get-launcher-announcement singleton_full_puzzle_hash GAME_AMOUNT P1_PK P2_PK) 
-    )
-)
+(list ASSERT_COIN_ANNOUNCEMENT launcher_coin_announcement)
 ```
 
 - When Bob's coin is spent, Bob's coin calculates coin annoucement and assert it.
 ```clojure
-(list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID GAME_AMOUNT))
+(list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
 ```
 ## Playing Tic Tac Toe Game
 **TBA**
