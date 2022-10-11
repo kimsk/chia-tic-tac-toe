@@ -22,7 +22,7 @@
 1. Alice provides her waiting room `coin id` to Bob. The waiting room puzzle `b` is created and its XCH address is generated for Bob.
 1. Alice sends 1 XCH and 1 mojo and Bob sends 1 XCH each to their provided XCH addresses.
 
-#### -- [Clawback](./notebook/clawback.ipynb)
+## [Clawback](./notebook/clawback.ipynb)
 > The waiting room puzzle for Alice allows the clawback after 100 blocks has passed if Bob has not created his waiting room coin and vice versa.
 
 ### Phase 2 -- Singleton Tic Tac Toe (Game) Coin
@@ -58,6 +58,5 @@
 ```clojure
 (list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
 ```
-## Playing Tic Tac Toe Game
-**TBA**
-- [tic tac toe singleton notebook](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/singleton.ipynb)
+## [Playing Tic Tac Toe Game](./notebook/play-game-sim.ipynb)
+
