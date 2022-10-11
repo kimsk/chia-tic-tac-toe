@@ -1,9 +1,44 @@
 # Chia Tic Tac Toe
-- [chia-concepts/tic-tac-toe](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/README.md)
-- [richardkiss/chiaswap](https://github.com/richardkiss/chiaswap)
-
 
 ## Creating Tic Tac Toe Coin
+
+In the chia-concepts, both Alice and Bob have to be able to sign and spend their coins together in the same spend bundle.
+
+![create-singleton](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/creating-singleton-coin.jpg?raw=true])
+
+The process is cumbersome and requires Bob to trust Alice not to steal his coin (Bob has to provide his signature for his coin spend). Also, both Alice and Bob can't use standard wallet and have to provide conditions manually.
+```python
+# alice's coin creates a launcher coin
+alice_conditions = [
+    # create launcher coin with the odd_amount (odd)
+    Program.to(
+        [
+            ConditionOpcode.CREATE_COIN,
+            singleton_top_layer_v1_1.SINGLETON_LAUNCHER_HASH,
+            game_amount,
+        ]),
+    # assert launcher coin announcement
+    Program.to(
+        [
+            ConditionOpcode.ASSERT_COIN_ANNOUNCEMENT, 
+            std_hash(launcher_id + launcher_announcement)
+        ]),
+    
+    # change
+    [ConditionOpcode.CREATE_COIN, alice.puzzle_hash, alice_coin.amount - (player_amount + 1)]
+]
+
+# bob's coin create change back to himself
+bob_conditions = [
+    [ConditionOpcode.CREATE_COIN, bob.puzzle_hash, bob_coin.amount - player_amount],
+]
+```
+
+We introdcue the waiting room coins allowing both Alice and Bob to send exact XCH to create their waiting room coins. 
+
+If either Alice or Bob or both decide not to play the game (e.g., only one waiting room coin is created or both waiting room coins are created, but Alice don't spend them), players can clawback their coins. 
+
+Once the waiting room coins for both players are on blockchain. Alice can put them together and create a Tic Tac Toe game coin. However, 
 
 ### Phase 1 -- Waiting Room Puzzle
 ```clojure
@@ -22,7 +57,6 @@
 1. Alice provides her waiting room `coin id` to Bob. The waiting room puzzle `b` is created and its XCH address is generated for Bob.
 1. Alice sends 1 XCH and 1 mojo and Bob sends 1 XCH each to their provided XCH addresses.
 
-## [Clawback](./notebook/clawback.ipynb)
 > The waiting room puzzle for Alice allows the clawback after 100 blocks has passed if Bob has not created his waiting room coin and vice versa.
 
 ### Phase 2 -- Singleton Tic Tac Toe (Game) Coin
@@ -30,7 +64,7 @@
 
 1. Alice's coin creates an ephermeral launcher coin that creates the game coin. Bob's coin is burned.
 
-#### Security
+### Security
 - Alice's coin asserts coin announcement from the launcher coin.
 - Alice signs hash of `launcher_id` and `singleton_full_puzzle_hash`.
 - Alice's coin verifies the signature.
@@ -58,5 +92,13 @@
 ```clojure
 (list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
 ```
-## [Playing Tic Tac Toe Game](./notebook/play-game-sim.ipynb)
+
+## Notebooks
+- [Clawback](./notebook/clawback.ipynb)
+- [Playing Tic Tac Toe Game](./notebook/play-game-sim.ipynb)
+
+## References
+- [chia-concepts/tic-tac-toe](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/README.md)
+- [richardkiss/chiaswap](https://github.com/richardkiss/chiaswap)
+
 
