@@ -46,6 +46,7 @@
     ("p1_pk" . <alice_pk>)
     ("p2_pk" . <bob_pk>)
 )
+```
 - Bob's coin is curried with Alice's `coin id`
 
 - When Alice's coin is spent, the launcher coin is created, spent, creating the game coin and generate the coin announcement. Alice's coin calculates coin announcement and assert it.
