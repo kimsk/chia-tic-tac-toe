@@ -1,12 +1,15 @@
 # Chia Tic Tac Toe
 
+This repo is the continued work of tic-tac-toe game on Chia Blockchain from [chia-concepts -- tic-tac-toe](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/README.md).
+
 ## Creating Tic Tac Toe Coin
 
-In the chia-concepts, both Alice and Bob have to be able to sign and spend their coins together in the same spend bundle.
+In the [chia-concepts -- tic-tac-toe](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/README.md), in order to create [an initial singleton game coin](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/singleton.ipynb), both Alice and Bob have to be able to sign and spend their coins together.
 
 ![create-singleton](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/creating-singleton-coin.jpg?raw=true])
 
-The process is cumbersome and requires Bob to trust Alice not to steal his coin (Bob has to provide his signature for his coin spend). Also, both Alice and Bob can't use standard wallet and have to provide conditions manually.
+The process is cumbersome and requires Bob to trust Alice not to steal his coin (because Bob has to provide his signature for his coin spend). Also, both Alice and Bob can't use standard wallets and have to provide conditions manually.
+
 ```python
 # alice's coin creates a launcher coin
 alice_conditions = [
@@ -34,13 +37,15 @@ bob_conditions = [
 ]
 ```
 
-We introdcue the waiting room coins allowing both Alice and Bob to send exact XCH to create their waiting room coins. 
+To resolve the issue, we introduced the [waiting room puzzle](https://github.com/kimsk/chia-tic-tac-toe/blob/main/code/waiting-room.clsp) allowing both Alice and Bob to send XCH to create their waiting room coins using their standard wallets.
 
-If either Alice or Bob or both decide not to play the game (e.g., only one waiting room coin is created or both waiting room coins are created, but Alice don't spend them), players can clawback their coins. 
+If either Alice or Bob or both decide not to play the game (e.g., only one waiting room coin is created or both waiting room coins are created, but Alice doesn't spend them to create a game coin), players can claw back their XCH.
 
-Once the waiting room coins for both players are on blockchain. Alice can put them together and create a Tic Tac Toe game coin. However, 
+Once the waiting room coins for both players are on blockchain. Alice can create a spend bundle spending two waiting room coins to create a Tic Tac Toe game coin. 
 
 ### Phase 1 -- Waiting Room Puzzle
+
+#### Waiting Room Puzzle Solution
 ```clojure
 ; PLAYER_PH                     : Player Puzzle Hash (for Clawback)
 ; P1_PK                         : Player One PK
@@ -50,19 +55,70 @@ Once the waiting room coins for both players are on blockchain. Alice can put th
 ; GAME_AMOUNT                   : Odd game amount in mojos
 ; launcher_coin_announcement    : Expected coin announcement from the launcher coin, null if Clawback
 ```
+#### Creating a tic tac toe coin
+```mermaid
+sequenceDiagram;
+    actor A as Alice;
+    actor B as Bob;
+    participant a as Alice's Waiting Room Coin;
+    participant b as Bob's Waiting Room Coin;
+    participant s as Singleton Launcher
+    participant t as Tic Tac Toe Coin;
 
-1. Alice (P1) enters and gives her PK to Bob (P2) and vice versa.
-1. Alice enters Bob's PK and vice versa.
-1. The waiting room puzzle `a` and its XCH address is generated for Alice.
-1. Alice provides her waiting room `coin id` to Bob. The waiting room puzzle `b` is created and its XCH address is generated for Bob.
-1. Alice sends 1 XCH and 1 mojo and Bob sends 1 XCH each to their provided XCH addresses.
+    rect rgb(220, 220, 220);
+    note over A,B: (1) PKs Exchainging;
+    A-)B: Alice's PK;
+    B-)A: Bob's PK;
+    end;
 
+    rect rgb(191, 223, 255);
+    note over a,t: (5) Alice's and Bob's coin are spent and a singleton launcer is created and spent;
+    A->>+a: (2) Create Alice's Waiting Room Coin; 
+    A-)B: (3) Alice's Waiting Room Coin Id; 
+    B->>+b: (4) Create Bob's Waiting Room Coin;
+    a->>-s: CREATE_COIN
+    s->>t: CREATE_COIN
+    b->>-s: Burned 
+    end;
+```
+
+1. Alice (P1) and Bob (P2) exchange their PKs.
+2. Alice creates her waiting room coin with her `puzzle_hash`, `pk`, bob's `pk`, and null for `P1_COIN_ID`.
+3. Alice provides her waiting room `coin id` to Bob. 
+4. Bob creates his waiting room coin with his `puzzle_hash`, Alice's `pk`, his `pk` and Alice's `coin id` from Alice.
+5. Once two coins with Alice's and Bob's waiting room puzzles are created, a spend bundle with Alice's and Bob's coin spends can be spent to create the tic tac toe singleton coin. Alice's coin creates an ephermeral launcher coin that creates the game coin. Bob's coin is burned.
+
+#### Clawback
 > The waiting room puzzle for Alice allows the clawback after 100 blocks has passed if Bob has not created his waiting room coin and vice versa.
 
-### Phase 2 -- Singleton Tic Tac Toe (Game) Coin
-1. Once two coins with Alice's and Bob's waiting room puzzles are created, a spend bundle with Alice's and Bob's coin spends can be spent to create the tic tac toe singleton coin with (2 XCH + 1 mojo).
+```mermaid
+sequenceDiagram;
+    actor A as Alice;
+    actor B as Bob;
+    participant a as Alice's Waiting Room Coin;
 
-1. Alice's coin creates an ephermeral launcher coin that creates the game coin. Bob's coin is burned.
+    rect rgb(220, 220, 220);
+    note over A,B: (1) PKs Exchainging;
+    A-)B: Alice's PK;
+    B-)A: Bob's PK;
+    end;
+
+    rect rgb(191, 223, 255);
+    note over A,a: Bob doesn't create his waiting room coin, so Alice waits for 100 blocks and clawback her XCH
+    A->>+a: (2) Create Alice's Waiting Room Coin; 
+    A-)B: (3) Alice's Waiting Room Coin Id;
+    loop (4) Alice Waits for Bob to Create His Waiting Room Coin
+        A->>B: Wait Until 100 Blocks Have Passed;
+    end
+    a->>-A: (5) Alice Spend Her Waiting Room Coin To Clawback Her XCH;
+    end;
+```
+
+1. Alice (P1) and Bob (P2) exchange their PKs.
+2. Alice creates her waiting room coin with her `puzzle_hash`, `pk`, bob's `pk`, and null for `P1_COIN_ID`.
+3. Alice provides her waiting room `coin id` to Bob.
+4. Alice waits for Bob to create his waiting room coin.
+5. After 100 blocks have passed, Alice can spend her waiting room coin to clawback her XCH.
 
 ### Security
 - Alice's coin asserts coin announcement from the launcher coin.
