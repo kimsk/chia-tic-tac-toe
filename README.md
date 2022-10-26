@@ -6,7 +6,7 @@ This repository is the continued work of tic-tac-toe game on Chia Blockchain fro
 
 In the chia-concepts/tic-tac-toe, in order to create [an initial singleton game coin](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/singleton.ipynb), both Alice and Bob have to be able to sign and spend their coins together.
 
-![create-singleton](https://github.com/kimsk/chia-concepts/blob/main/notebooks/misc/tic-tac-toe/creating-singleton-coin.jpg?raw=true])
+![create-singleton](https://github.com/kimsk/chia-concepts/raw/main/notebooks/misc/tic-tac-toe/creating-coin.jpg?raw=true])
 
 The process is cumbersome and requires Bob to trust Alice not to steal his coin (because Bob has to provide his signature for his coin spend). Also, both Alice and Bob can't use standard wallets and have to prepare conditions for the standard spend manually.
 
@@ -39,9 +39,9 @@ bob_conditions = [
 
 To resolve the issue, we introduced the [waiting room puzzle](https://github.com/kimsk/chia-tic-tac-toe/blob/main/code/waiting-room.clsp) allowing both Alice and Bob to send XCH to create their waiting room coins using their standard wallets.
 
-If either Alice or Bob or both decide not to play the game (e.g., only one waiting room coin is created or both waiting room coins are created, but Alice doesn't spend them to create a game coin), players can claw back their XCH.
+Once the waiting room coins for both players are on the blockchain. Alice can create a spend bundle by spending two waiting room coins to create a Tic Tac Toe game coin.
 
-Once the waiting room coins for both players are on blockchain. Alice can create a spend bundle spending two waiting room coins to create a Tic Tac Toe game coin.
+If either Alice or Bob or both decide not to play the game (e.g., only one waiting room coin is created or both waiting room coins are created, but Alice doesn't spend them to create a game coin), players can claw back their XCH.
 
 Each waiting coin also curries in the `RETURN_AMOUNT` (for clawback) and `GAME_AMOUNT` (amount to get when someone wins) that are agreed upon before creating the game.
 
@@ -125,7 +125,7 @@ sequenceDiagram;
 2. Alice creates her coin with her `puzzle_hash`, `pk`, bob's `pk`, and null for `P1_COIN_ID`.
 3. Alice provides her waiting room `coin id` to Bob.
 4. Alice waits for Bob to create his waiting room coin.
-5. After 100 blocks have passed, Alice can spend her waiting room coin to clawback her XCH.
+5. After 100 blocks have passed, Alice can spend her waiting room coin to claw back her XCH.
 
 ### Security
 > Alice's, Bob's, and the launcher coin have to be spent together in one transaction to create a singleton tic-tac-toe game coin.
@@ -143,7 +143,7 @@ flowchart TB
     style t0 fill:#FFC0CB,stroke:#FF69B4,stroke-width:2px
     l==>|CREATE_COIN|t0((Tic-Tac-Toe 0))
 ```
-- When Alice's coin is spent, the launcher coin is created and spent in the same transaction. The launcher coin also creates the game coin and generates the coin announcement. Alice's coin then assert the launcher coin announcement.
+- When Alice's coin is spent, the launcher coin is created and spent in the same transaction. The launcher coin also creates the game coin and generates the coin announcement. Alice's coin then asserts the launcher coin announcement.
 ```clojure
 (list ASSERT_COIN_ANNOUNCEMENT launcher_coin_announcement)
 ```
@@ -190,11 +190,11 @@ launcher_solution = Program.to(
 launcher_announcement = launcher_solution.get_tree_hash()
 ```
 - Bob's coin is curried with Alice's `coin id` (`P1_COIN_ID`).
-- Bob's coin also asserts the launcher coin announcement but announced from the Alice's coin.
+- Bob's coin also asserts the launcher coin announcement announced by Alice's coin.
 ```clojure
 (list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
 ```
-- In Clawback case, a player has to sign their `puzzle hash` and the `return amount` with their secret key to claw back their XCH. The clawback case is valid only after 100 blocks has passed after the waiting room coin is created.
+- In Clawback case, a player has to sign their `puzzle hash` and the `return amount` with their secret key to claw back their XCH. The clawback case is valid only after 100 blocks have passed after the waiting room coin is created.
 ```clojure
   (defconstant CLAWBACK_BLOCKS 100)
   ...
@@ -214,7 +214,7 @@ launcher_announcement = launcher_solution.get_tree_hash()
 ```
 
 ## Notebooks
-- [Clawback](./notebook/clawback-sim.ipynb)
+- [Clawback](./notebook/clawback.ipynb)
 - [Playing Tic Tac Toe Game](./notebook/play-game-sim.ipynb)
 
 ## References
