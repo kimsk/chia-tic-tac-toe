@@ -47,12 +47,12 @@ Each waiting coin also curries in the `RETURN_AMOUNT` (for clawback) and `GAME_A
 
 ### Waiting Room Puzzle
 ```clojure
-; PLAYER_PH                     : Player Puzzle Hash (for Clawback)
 ; P1_PK                         : Player One PK
 ; P2_PK                         : Player Two PK
-; P1_COIN_ID                    : P1 coin id, null if this is P1 coin
 ; RETURN_AMOUNT                 : Amount returned to player when clawback in mojos
 ; GAME_AMOUNT                   : Odd game amount in mojos
+; P1_PH                         : P1 coin puzzle hash, null if this is P1 coin
+; clawback_puzzle_hash          : Clawback Puzzle Hash, null if not clawback
 ; launcher_coin_announcement    : Expected coin announcement from the launcher coin, null if Clawback
 ```
 #### Creating a tic tac toe coin
@@ -72,11 +72,10 @@ sequenceDiagram;
     end;
 
     rect rgb(191, 223, 255);
-    note over a,t: (5) Alice's and Bob's coin are spent and a singleton launcer is created and spent;
+    note over a,t: (4) Alice's and Bob's coin are spent and a singleton launcer is created and spent;
     A->>a: (2) Create Alice's Coin;
     activate a
-    A-)B: (3) Alice's Coin Id; 
-    B->>b: (4) Create Bob's Coin;
+    B->>b: (3) Create Bob's Coin;
     activate b
     a->>s: CREATE_COIN
     deactivate a
@@ -88,10 +87,9 @@ sequenceDiagram;
 ```
 
 1. Alice (P1) and Bob (P2) exchange their PKs.
-2. Alice creates her waiting room coin (Alice's coin) with her `puzzle_hash`, `pk`, bob's `pk`, `null` for `P1_COIN_ID`, and agreed `RETURN_AMOUNT` and `GAME_AMOUNT`.
-3. Alice provides her waiting room `coin id` to Bob. 
-4. Bob creates his waiting room coin (Bob's coin) with his `puzzle_hash`, Alice's `pk`, his `pk`, Alice's `coin id` from Alice, and agreed `RETURN_AMOUNT` and `GAME_AMOUNT`.
-5. Once two coins with Alice's and Bob's waiting room puzzles are created, Alice's and Bob's coin spends can be spent together in a spend bundle to create the tic tac toe singleton coin. Alice's coin creates an ephermeral launcher coin that creates the game coin. Bob's coin is burned.
+2. Alice creates her waiting room coin (Alice's coin) with her `pk`, bob's `pk`, agreed `RETURN_AMOUNT` and `GAME_AMOUNT`, and `null` for `P1_PH`.
+3. Bob creates his waiting room coin (Bob's coin) with Alice's `pk`, his `pk`, agreed `RETURN_AMOUNT` and `GAME_AMOUNT`, and calculated Alice's coin puzzle hash for `P1_PH`.
+4. Once two coins with Alice's and Bob's waiting room puzzles are created, Alice's and Bob's coin spends can be spent together in a spend bundle to create the tic tac toe singleton coin. Alice's coin creates an ephermeral launcher coin that creates the game coin. Bob's coin is burned.
 
 #### Clawback
 > The waiting room puzzle for Alice allows the clawback after 100 blocks has passed if Bob has not created his waiting room coin. Or if Bob has created his coin, but Alice clawed back her XCH and didn't create a game.
@@ -112,20 +110,18 @@ sequenceDiagram;
     note over A,a: Bob doesn't create his coin, so Alice waits for 100 blocks and claw back her XCH
     A->>a: (2) Create Alice's Coin;
     activate a
-    A-)B: (3) Alice's Waiting Room Coin Id;
-    loop (4) Alice Waits for Bob to Create His Coin
+    loop (3) Alice Waits for Bob to Create His Coin
         A->>B: Wait Until 100 Blocks Have Passed;
     end
-    a->>A: (5) Alice Spends Her Coin To Claw back Her XCH;
+    a->>A: (4) Alice Spends Her Coin To Claw back Her XCH;
     deactivate a
     end;
 ```
 
 1. Alice (P1) and Bob (P2) exchange their PKs.
-2. Alice creates her coin with her `puzzle_hash`, `pk`, bob's `pk`, and null for `P1_COIN_ID`.
-3. Alice provides her waiting room `coin id` to Bob.
-4. Alice waits for Bob to create his waiting room coin.
-5. After 100 blocks have passed, Alice can spend her waiting room coin to claw back her XCH.
+2. Alice creates her waiting room coin (Alice's coin) with her `pk`, bob's `pk`, agreed `RETURN_AMOUNT` and `GAME_AMOUNT`, and `null` for `P1_PH`.
+3. Alice waits for Bob to create his waiting room coin.
+4. After 100 blocks have passed, Alice can spend her waiting room coin to claw back her XCH.
 
 ### Security
 > Alice's, Bob's, and the launcher coin have to be spent together in one transaction to create a singleton tic-tac-toe game coin.
@@ -133,9 +129,10 @@ sequenceDiagram;
 flowchart TB
     classDef waiting_room fill:#87CEFA; 
     classDef coin_announcement fill:#FFA07A, stroke-dasharray: 5 5;
+    classDef puzzle_announcement fill:#CD5C5C, stroke-dasharray: 5 5;
     subgraph Atomic Transaction
-        a((Alice's)):::waiting_room-->|CREATE_COIN_ANNOUNCEMENT|aca[/Alice's Coin Anouncement/]:::coin_announcement
-        b((Bob's)):::waiting_room-->|ASSERT_COIN_ANNOUNCEMENT|aca
+        a((Alice's)):::waiting_room-->|CREATE_PUZZLE_ANNOUNCEMENT|aca[/Alice's Puzzle Anouncement/]:::puzzle_announcement
+        b((Bob's)):::waiting_room-->|ASSERT_PUZZLE_ANNOUNCEMENT|aca
         a==>|CREATE_COIN|l((Launcher))
         l-->|CREATE_COIN_ANNOUNCEMENT|lca[/Launcher Coin Anouncement/]:::coin_announcement
         a-->|ASSERT_COIN_ANNOUNCEMENT|lca
@@ -153,6 +150,7 @@ alice_waiting_room_coin_spend = CoinSpend(
     alice_waiting_room_coin,
     alice_waiting_room_puzzle,
     Program.to([
+        0, # null if not clawback
         launcher_coin_announcement
     ])
 )
@@ -189,28 +187,31 @@ launcher_solution = Program.to(
 
 launcher_announcement = launcher_solution.get_tree_hash()
 ```
-- Bob's coin is curried with Alice's `coin id` (`P1_COIN_ID`).
-- Bob's coin also asserts the launcher coin announcement announced by Alice's coin.
+- Bob's coin is curried with Alice's coin puzzle hash (`P1_PH`). Bob can calculate the `P1_PH` himself.
+- Bob's coin also asserts the puzzle announcement of the launcher coin announcement announced by Alice's coin.
 ```clojure
-(list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
+; P2 asserts a puzzle announcement from P1
+; We want to secure P2 spend without AGG_SIG_ME
+(list ASSERT_PUZZLE_ANNOUNCEMENT (sha256 P1_PH launcher_coin_announcement))
+            
 ```
-- In Clawback case, a player has to sign their `puzzle hash` and the `return amount` with their secret key to claw back their XCH. The clawback case is valid only after 100 blocks have passed after the waiting room coin is created.
+- In Clawback case, a player has to sign their `clawback_puzzle_hash` and the `return amount` with their secret key to claw back their XCH. The clawback case is valid only after 100 blocks have passed after the waiting room coin is created.
 ```clojure
   (defconstant CLAWBACK_BLOCKS 100)
   ...
-  (defun-inline clawback (PLAYER_PH RETURN_AMOUNT)
+    (defun-inline clawback (RETURN_AMOUNT P1_PH clawback_puzzle_hash)
+    (list 
+        (list ASSERT_HEIGHT_RELATIVE CLAWBACK_BLOCKS) ; clawback condition valid after CLAWBACK_BLOCKS blocks have passed
+        (list CREATE_COIN clawback_puzzle_hash RETURN_AMOUNT) ; return mojos to provided puzzle hash 
         (list 
-            (list ASSERT_HEIGHT_RELATIVE CLAWBACK_BLOCKS) ; clawback condition valid after CLAWBACK_BLOCKS blocks have passed
-            (list CREATE_COIN PLAYER_PH RETURN_AMOUNT) ; return mojos to player 
-            (list 
-                AGG_SIG_ME
-                (if P1_COIN_ID
-                    P2_PK
-                    P1_PK
-                )
-                (sha256 PLAYER_PH RETURN_AMOUNT))
-        )
+            AGG_SIG_ME
+            (if P1_PH
+                P2_PK
+                P1_PK ; null if this is P1 coin
+            )
+            (sha256 clawback_puzzle_hash RETURN_AMOUNT))
     )
+)
 ```
 
 ## Notebooks
