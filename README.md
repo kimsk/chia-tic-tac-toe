@@ -66,19 +66,24 @@ sequenceDiagram;
     participant t as Tic Tac Toe Coin;
 
     rect rgb(220, 220, 220);
-    note over A,B: (1) PKs Exchainging;
+    note over A,B: (1) PKs Exchanging;
     A-)B: Alice's PK;
     B-)A: Bob's PK;
     end;
 
     rect rgb(191, 223, 255);
     note over a,t: (5) Alice's and Bob's coin are spent and a singleton launcer is created and spent;
-    A->>+a: (2) Create Alice's Coin; 
+    A->>a: (2) Create Alice's Coin;
+    activate a
     A-)B: (3) Alice's Coin Id; 
-    B->>+b: (4) Create Bob's Coin;
-    a->>-s: CREATE_COIN
+    B->>b: (4) Create Bob's Coin;
+    activate b
+    a->>s: CREATE_COIN
+    deactivate a
+    deactivate b
+    activate s
     s->>t: CREATE_COIN
-    b->>-s: (5) Burned 
+    deactivate s
     end;
 ```
 
@@ -98,19 +103,21 @@ sequenceDiagram;
     participant a as Alice's Coin;
 
     rect rgb(220, 220, 220);
-    note over A,B: (1) PKs Exchainging;
+    note over A,B: (1) PKs Exchanging;
     A-)B: Alice's PK;
     B-)A: Bob's PK;
     end;
 
     rect rgb(191, 223, 255);
-    note over A,a: Bob doesn't create his coin, so Alice waits for 100 blocks and clawback her XCH
-    A->>+a: (2) Create Alice's Coin; 
+    note over A,a: Bob doesn't create his coin, so Alice waits for 100 blocks and claw back her XCH
+    A->>a: (2) Create Alice's Coin;
+    activate a
     A-)B: (3) Alice's Waiting Room Coin Id;
     loop (4) Alice Waits for Bob to Create His Coin
         A->>B: Wait Until 100 Blocks Have Passed;
     end
-    a->>-A: (5) Alice Spend Her Coin To Clawback Her XCH;
+    a->>A: (5) Alice Spends Her Coin To Claw back Her XCH;
+    deactivate a
     end;
 ```
 
@@ -140,7 +147,7 @@ flowchart TB
 ```clojure
 (list ASSERT_COIN_ANNOUNCEMENT launcher_coin_announcement)
 ```
-- Alice provides `launcher_coin_announcement` in a solution and sign it with her secret key. 
+- Alice provides `launcher_coin_announcement` in a solution and sign it with her secret key.
 ```python
 alice_waiting_room_coin_spend = CoinSpend(
     alice_waiting_room_coin,
@@ -183,7 +190,7 @@ launcher_solution = Program.to(
 launcher_announcement = launcher_solution.get_tree_hash()
 ```
 - Bob's coin is curried with Alice's `coin id` (`P1_COIN_ID`).
-- Bob's coin also asserts the launcher coin announcement from the Alice's coin.
+- Bob's coin also asserts the launcher coin announcement but announced from the Alice's coin.
 ```clojure
 (list ASSERT_COIN_ANNOUNCEMENT (sha256 P1_COIN_ID launcher_coin_announcement))
 ```
