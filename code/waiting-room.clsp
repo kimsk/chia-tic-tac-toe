@@ -55,7 +55,7 @@
         )
     )
 
-    ; if launcher_id is not null (not clawback)
+    ; if clawback_puzzle_hash is not null (clawback)
     (if clawback_puzzle_hash 
         (clawback RETURN_AMOUNT P1_PH clawback_puzzle_hash)
         (start-game
